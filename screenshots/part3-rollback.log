@@ -1,0 +1,44 @@
+=== Part III evidence: rollback when the candidate is unhealthy ===
+captured: 2026-09-28T09:52:42Z
+
+A deliberately broken image (entrypoint exits 3 immediately) is deployed
+while a healthy production container is serving. deploy.sh must refuse to
+promote it and leave production untouched.
+
+############ PRODUCTION BEFORE ############
+
+$ curl -s http://localhost:8888/version
+12-325b7f85
+$ docker ps --filter name=devops-hello
+NAMES               IMAGE                      STATUS
+devops-hello-demo   devops-hello:1.0.0         Up About a minute
+devops-hello        devops-hello:12-325b7f85   Up 2 minutes
+
+############ THE FAILED DEPLOY ############
+
+$ ./scripts/deploy.sh devops-hello:broken
+deploy: starting candidate devops-hello-cand from devops-hello:broken
+eff48b0a3c7db5555439cd67dec2d3aa3f0be42c1ff3f87371f6a18e3c9b1429
+deploy: candidate never became healthy at localhost:8889 (last code=0000), rolling back
+
+exit code: 1   (non-zero => Jenkins marks the Deploy stage FAILED)
+
+############ PRODUCTION AFTER ############
+
+$ curl -s http://localhost:8888/version
+12-325b7f85
+$ docker ps --filter name=devops-hello
+NAMES               IMAGE                      STATUS
+devops-hello-demo   devops-hello:1.0.0         Up About a minute
+devops-hello        devops-hello:12-325b7f85   Up 3 minutes
+
+leftover candidate container? (should be none)
+  none - candidate was cleaned up
+
+############ WHAT THIS PROVES ############
+
+1. deploy.sh started the broken image as a candidate and health-checked it.
+2. The candidate never returned 200 on /health, so it was removed.
+3. The previous production container was never touched and kept serving.
+4. deploy.sh exited non-zero, so the Jenkins Deploy stage fails and every
+   later stage is skipped - a bad build cannot reach production.

@@ -1,0 +1,18 @@
+# Anything not strictly needed for `docker build`.
+
+# Dot-entries at the context root: VCS metadata, local tool state, editor
+# config, env files. None of it belongs in an image, and ignoring them as a
+# group means no tool name has to be listed here.
+.*
+
+# Docs, scripts and evidence are not needed inside the image
+*.md
+!README.md
+docs/
+screenshots/
+scripts/
+
+# Test and coverage output
+coverage.*
+*.test
+*.out

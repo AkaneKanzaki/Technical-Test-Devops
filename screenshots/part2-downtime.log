@@ -1,0 +1,26 @@
+=== Part II evidence: request-level impact of the swap ===
+captured: 2026-09-28T09:51:57Z
+
+A tight request loop hammers /version while the swap happens partway through.
+Any request that fails, or any long stall, shows up below.
+
+$ ./scripts/swap-measure.sh devops-hello-demo 1.0.2 8890
+
+baseline version: 1.0.1
+built .bin/hello-v2 (version=1.0.2)
+waiting for version=1.0.2 on http://localhost:8890 ... ok in 2295 ms
+curl /        -> Hello, DevOps! version=1.0.2curl /version -> 1.0.2
+
+--- hot-swap impact ---
+requests observed      : 30
+responses ok           : 30
+responses failed       : 0
+  served old version   : 21
+  served new version   : 9
+version flipped at     : request #22
+longest gap between    : 757 ms  (worst-case user-visible stall)
+total window           : 19137 ms
+verdict                : no request failed during the swap
+
+container restarts during the measurement:
+  RestartCount=0  StartedAt=2026-09-28T09:51:14.019586639Z

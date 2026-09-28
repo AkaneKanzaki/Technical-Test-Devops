@@ -1,0 +1,47 @@
+=== Part I evidence: image size + layer breakdown ===
+captured: 2026-09-28T09:50:53Z
+
+$ docker images
+REPOSITORY        TAG           IMAGE ID       SIZE      CREATED
+devops-hello      12-325b7f85   ee0ff3b2aa72   22.4MB    About a minute ago
+devops-hello      1.0.0         7795b72e157d   22.4MB    3 minutes ago
+devops-hello      11-93d229fe   627fb1ff6fb3   22.4MB    35 minutes ago
+jenkins-custom    lts           f7fd33595b21   1.24GB    43 minutes ago
+golang            1.27-alpine   8a5910f31396   381MB     10 days ago
+jenkins/jenkins   lts           c1e4c349365f   814MB     3 weeks ago
+alpine            3.20          d9e853e87e55   12.2MB    5 months ago
+
+$ docker inspect -f '{{.Size}} bytes' devops-hello:12-325b7f85
+22402645 bytes
+
+$ docker history devops-hello:12-325b7f85 --no-trunc
+   (bottom two rows = the alpine:3.20 base layers, dated when Alpine published them)
+IMAGE                                                                     CREATED              CREATED BY                                                                                                                      SIZE      COMMENT
+sha256:ee0ff3b2aa729ca76bb1a5e99d68c1bd86d5adb4c15fc6571a8e06276fd6d292   About a minute ago   /bin/sh -c #(nop)  ENTRYPOINT ["/sbin/tini" "--" "/usr/local/bin/entrypoint.sh"]                                                0B        
+sha256:a4628034d3826c3bf740cb3c7fc395da2379739820f2c8adf7918748159122cf   About a minute ago   /bin/sh -c #(nop)  EXPOSE 8080                                                                                                  0B        
+sha256:1bd64fb599c6c8b75390ecf4b175de55e59ef9df681194ac1970761e5e869ca0   About a minute ago   /bin/sh -c #(nop)  USER app                                                                                                     0B        
+sha256:943feda3138aa418bfe8f618f3e334d6b82871692e019e0016fbe0dee2e913d1   About a minute ago   /bin/sh -c chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/hello                                                           20.5kB    
+sha256:e57f1e7d2d0e33fb2fd6d2ab66da810334ede7c37c1c57080488692884c21f70   About a minute ago   /bin/sh -c #(nop) COPY file:832f82bc65d7ba398667298e47530f15b676126f178dfa0e1704ea1429a4fb56 in /usr/local/bin/hello            5.88MB    
+sha256:5ffe1ae5a92ef7ab89943aa198c2afb92eb16e99a8d8d12ec761677c7c979f09   About a minute ago   /bin/sh -c #(nop) COPY file:0c59d3c1b5f5e65198cc5ea4c005274dd4a829e120fa6b5757c20abfb6e7f45b in /usr/local/bin/entrypoint.sh    20.5kB    
+sha256:e8e696bfe0ca6ec972a245a10208b778af8270907f9ddd4166c1b2b41f496e8d   About a minute ago   /bin/sh -c apk add --no-cache ca-certificates tini  && addgroup -S app && adduser -S app -G app                                 1.52MB    
+sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc   5 months ago         CMD ["/bin/sh"]                                                                                                                 0B        buildkit.dockerfile.v0
+<missing>                                                                 5 months ago         ADD alpine-minirootfs-3.20.10-x86_64.tar.gz / # buildkit                                                                        8.47MB    buildkit.dockerfile.v0
+
+=== static binary check (no dynamic linker) ===
+-rwxr-xr-x    1 root     root       5857440 Sep 28 09:49 /usr/local/bin/hello
+
+/lib/ld-musl-x86_64.so.1: /usr/local/bin/hello: Not a valid dynamic program
+
+=== version injection proof ===
+12-325b7f85
+
+=== image config (non-default fields) ===
+User=app WorkingDir=/ Entrypoint=[/sbin/tini -- /usr/local/bin/entrypoint.sh]
+
+=== base image provenance ===
+$ docker inspect alpine:3.20 -f '{{.Created}}'
+2026-04-16T23:53:26.803599608Z
+
+The alpine:3.20 layer above is dated when Alpine maintainers published
+minirootfs 3.20.10 -- NOT when this image was built. docker pull keeps
+the upstream layer timestamps; Docker never rewrites them.

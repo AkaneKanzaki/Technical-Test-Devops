@@ -1,0 +1,51 @@
+# Go build outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test and coverage artifacts - never push these
+*.test
+*.out
+coverage.txt
+coverage.html
+*.cover
+*.coverprofile
+
+# Local Go workspace and build output
+/vendor/
+/bin/
+/dist/
+/build/
+/tmp/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+Desktop.ini
+
+# Any local tool or editor state directory. Dot-directories are never project
+# files, so ignore them wholesale instead of listing tools one by one.
+.*/
+!.github/
+
+# Misc logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Local secrets - never commit
+.env
+.env.*
+.envrc
+
+# Jenkins workspace dumps (when running locally)
+workspace/
+junit.xml
+test-results/
+
+# The evidence we ship to the reviewer is a deliverable, not a runtime log.
+!screenshots/*.log

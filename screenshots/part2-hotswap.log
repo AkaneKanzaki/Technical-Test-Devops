@@ -1,0 +1,70 @@
+=== Part II evidence: hot-swap without rebuild, without restart, without removal ===
+captured: 2026-09-28T09:51:17Z
+
+############ BEFORE ############
+
+$ curl -s http://localhost:8890/
+Hello, DevOps! version=1.0.0
+$ curl -s http://localhost:8890/version
+1.0.0
+
+container identity:
+  ID          = 09de2de6f8108d5028065ea70d8d3526043cf5aeacdd3cfe27da691a4c163fab
+  Created     = 2026-09-28T09:51:13.95028319Z
+  StartedAt   = 2026-09-28T09:51:14.019586639Z
+  RestartCount= 0
+image in use:
+  sha256:7795b72e157d5fa369c8375a3ba6611ac15df3bc7fd34b689fe4a50688f57ac4
+binary SHA inside the container:
+26843d1c67c79f3c417651f6ff53fb3f3d224cb58030491d50d0cdb96d1b94a0  /usr/local/bin/hello
+process tree (PID 1 is tini, entrypoint.sh is its child):
+PID   PPID  COMMAND
+    1     0 tini
+    7     1 entrypoint.sh
+    8     7 hello
+   19     0 ps
+
+############ THE SWAP ############
+
+$ ./scripts/swap-binary.sh devops-hello-demo 1.0.1 .bin/hello-v2 8890
+built .bin/hello-v2 (version=1.0.1)
+waiting for version=1.0.1 on http://localhost:8890 ... ok in 1879 ms
+curl /        -> Hello, DevOps! version=1.0.1curl /version -> 1.0.1
+
+############ AFTER ############
+
+$ curl -s http://localhost:8890/
+Hello, DevOps! version=1.0.1
+$ curl -s http://localhost:8890/version
+1.0.1
+
+container identity:
+  ID          = 09de2de6f8108d5028065ea70d8d3526043cf5aeacdd3cfe27da691a4c163fab
+  Created     = 2026-09-28T09:51:13.95028319Z
+  StartedAt   = 2026-09-28T09:51:14.019586639Z
+  RestartCount= 0
+image in use:
+  sha256:7795b72e157d5fa369c8375a3ba6611ac15df3bc7fd34b689fe4a50688f57ac4
+binary SHA inside the container:
+bc1d01d264491b3c9ae11f35210ba0296882e3ef956c9544a2fdbb2c6dc016f5  /usr/local/bin/hello
+host binary SHA (must match the container one above):
+bc1d01d264491b3c9ae11f35210ba0296882e3ef956c9544a2fdbb2c6dc016f5 *.bin/hello-v2
+process tree (PID 1 and entrypoint.sh keep the SAME pid; only hello is replaced):
+PID   PPID  COMMAND
+    1     0 tini
+    7     1 entrypoint.sh
+   31     7 hello
+   42     0 ps
+
+############ WHAT THE SIGNALS PROVE ############
+
+container ID    unchanged -> same container object, never removed or recreated
+Created         unchanged -> never recreated from scratch
+StartedAt       unchanged -> PID 1 never exited; the container was never restarted
+RestartCount    0         -> Docker's restart counter never incremented
+image ID        unchanged -> no 'docker build' was run for this swap
+binary SHA      changed   -> the file inside was replaced, and matches the host copy
+entrypoint.sh   same PID  -> the supervisor loop kept running throughout
+
+This is a true in-place swap: the supervisor stops the old child and
+re-spawns the new binary without ever exiting, so Docker has nothing to restart.
